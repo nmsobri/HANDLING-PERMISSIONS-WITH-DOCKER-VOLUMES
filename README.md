@@ -1,4 +1,9 @@
 # HANDLING PERMISSIONS WITH DOCKER VOLUMES
+Inspired by this article:
+1. [Docker volumes and file system permissions](https://medium.com/@nielssj/docker-volumes-and-file-system-permissions-772c1aee23ca)  
+2. [Handling permissions with docker volume ](https://denibertovic.com/posts/handling-permissions-with-docker-volumes/)  
+
+
 In this post I'll try to explain the method I use to avoid having permission issues when using Docker Volumes. This is pre Docker 1.10 (which added user namespaces).
 
 Before we begin let me explain what are Docker Volumes and what they're used for. The official Docker docs explain this feature as follows:
