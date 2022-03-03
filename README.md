@@ -30,7 +30,7 @@ This solution is inadequate because you hard-code the UID of the user in the bui
 Docker provides a `-u` flag with it's `run` command to dynamically switch to a specified UID during container start. So we can write something like this:
 
 ```
-deni@kanta:~$ docker run -it -u `id -u $USER` debian:jessie /bin/bash
+deni@kanta:~$ docker run -it -u `id -u $USER` debian:bullseye-slim /bin/bash
 I have no name!@dcb415bad433:/$ id
 uid=1000 gid=0(root) groups=0(root)
 ```
