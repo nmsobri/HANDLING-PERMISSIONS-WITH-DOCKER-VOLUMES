@@ -1,6 +1,6 @@
 # HANDLING PERMISSIONS WITH DOCKER VOLUMES
 
-In this post I'll try to explain the method I use to avoid having permission issues when using Docker Volumes. This is pre Docker 1.10 (which added user namespaces) and I will talk about those in my next post.
+In this post I'll try to explain the method I use to avoid having permission issues when using Docker Volumes. This is pre Docker 1.10 (which added user namespaces).
 
 Before we begin let me explain what are Docker Volumes and what they're used for. The official Docker docs explain this feature as follows:
 
@@ -36,59 +36,50 @@ uid=1000 gid=0(root) groups=0(root)
 ```
 This approach, while dynamic in the sense that the UID is specified at runtime, has 2 drawbacks:
 
-The GID (group id) of the user is still 0 (root)
-The UID 1000 is not present in the container's /etc/passwd file.
+1. The GID (group id) of the user is still 0 (root)
+2. The UID 1000 is not present in the container's /etc/passwd file.
+
 While no. 1. is definitely problematic for obvious reasons no. 2. is where we hit a wall. Now while the Linux Filesystem doesn't really care about user names, rather just UID's, some applications will refuse to start if the user is not present in `/etc/passwd`.
 
-So what we need is something like -u but that doesn't just use the UID of our user but actually creates a user with that UID and then starts the process owned by it.
+So what we need is something like `-u` but that doesn't just use the UID of our user but actually creates a user with that UID and then starts the process owned by it.
 
 To do that we have to create a base Dockerfile from which all of our other Dockerfiles will inherit. That Dockerfile should look something like this.
 
 ```
-FROM debian:jessie
+FROM debian:bullseye-slim
 
-RUN apt-get update && apt-get -y --no-install-recommends install \
-    ca-certificates \
-    curl
-
-RUN gpg --keyserver ha.pool.sks-keyservers.net --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4
-RUN curl -o /usr/local/bin/gosu -SL "https://github.com/tianon/gosu/releases/download/1.4/gosu-$(dpkg --print-architecture)" \
-    && curl -o /usr/local/bin/gosu.asc -SL "https://github.com/tianon/gosu/releases/download/1.4/gosu-$(dpkg --print-architecture).asc" \
-    && gpg --verify /usr/local/bin/gosu.asc \
-    && rm /usr/local/bin/gosu.asc \
-    && chmod +x /usr/local/bin/gosu
+RUN set -e; apt-get update; apt-get install -y gosu; rm -rf /var/lib/apt/lists/*;
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["entrypoint.sh"]
 ```
 
-In this base Dockerfile we're installing a tool called `gosu` and setting an entrypoint. An entrypoint is basically a script that gets executed before any other command that you might pass to your container. So unless we overwrite the entrypoint we are guaranteed to go through this script every time we launch our containers, before we actually run our actual process.
+In this base Dockerfile we're installing a tool called `gosu` and setting an [entrypoint](https://docs.docker.com/engine/reference/builder/#entrypoint). An entrypoint is basically a script that gets executed before any other command that you might pass to your container. So unless we overwrite the entrypoint we are guaranteed to go through this script every time we launch our containers, before we actually run our actual process.
 
-In fact the CMD statement from the Dockefile or from docker CLI gets passed to the entrypoint.sh script as command line arguments. The reason we're installing gosu is because we will need it to switch to the newly created user.
+In fact the CMD statement from the Dockefile or from docker CLI gets passed to the `entrypoint.sh` script as command line arguments. The reason we're installing gosu is because we will need it to switch to the newly created user.
 
-NOTE: The reason why we don't use sudo is explained in gosu repo's README.
+**NOTE:** The reason why we don't use sudo is explained in gosu repo's README.
 
-Now let's look at the entrypoint.sh script:
+Now let's look at the `entrypoint.sh` script:
 
 ```
 #!/bin/bash
 
 # Add local user
-# Either use the LOCAL_USER_ID if passed in at runtime or
-# fallback
+# Either use the USER_ID environment variable if passed in at runtime or fallback to 9999
 
-USER_ID=${LOCAL_USER_ID:-9001}
+USER_ID=${USER_ID:-9999}
 
 echo "Starting with UID : $USER_ID"
-useradd --shell /bin/bash -u $USER_ID -o -c "" -m user
-export HOME=/home/user
+useradd --shell /bin/bash -u $USER_ID -o -c "" -m devuser
+export HOME=/home/devuser
 
-exec /usr/local/bin/gosu user "$@"
+exec gosu devuser "$@"
 ```
 
-What we're doing here is fetching a UID from an environment variable, defaulting to 9001 if it doesn't exist, and actually creating the user "user" with the familiar useradd command while setting it's UID explicitly.
+What we're doing here is fetching a UID from an environment variable, defaulting to 9001 if it doesn't exist, and actually creating the user "user" with the familiar `useradd` command while setting it's UID explicitly.
 
 And lastly we use `gosu` to execute our process `"$@"` as that user. Remember CMD from a Dockerfile or command from docker CLI gets passed to the entrypoint.sh script as command line arguments.
 
