@@ -105,15 +105,15 @@ Run it:
 
 ```
 deni@kanta:~$ docker run -it myimage
-Starting with UID : 9001
+Starting with UID : 9999
 user@056b9bb45214:/$ id
-uid=9001(user) gid=9001(user) groups=9001(user)
+uid=9999(user) gid=9999(user) groups=9999(user)
 ```
 
 Run it with passing in our UID:
 
 ```
-deni@kanta:~$ docker run -it -e USER_ID=`id -u $USER` myimage
+deni@kanta:~$ docker run -it -e USER_ID=`id -u` myimage
 Starting with UID : 1000
 user@fc07b6c32b4f:/$ id
 uid=1000(user) gid=1000(user) groups=1000(user)
