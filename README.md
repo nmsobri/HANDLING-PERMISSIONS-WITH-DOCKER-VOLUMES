@@ -1,5 +1,4 @@
 # HANDLING PERMISSIONS WITH DOCKER VOLUMES
-
 In this post I'll try to explain the method I use to avoid having permission issues when using Docker Volumes. This is pre Docker 1.10 (which added user namespaces).
 
 Before we begin let me explain what are Docker Volumes and what they're used for. The official Docker docs explain this feature as follows:
@@ -114,7 +113,7 @@ uid=9001(user) gid=9001(user) groups=9001(user)
 Run it with passing in our UID:
 
 ```
-deni@kanta:~$ docker run -it -e LOCAL_USER_ID=`id -u $USER` myimage
+deni@kanta:~$ docker run -it -e USER_ID=`id -u $USER` myimage
 Starting with UID : 1000
 user@fc07b6c32b4f:/$ id
 uid=1000(user) gid=1000(user) groups=1000(user)
